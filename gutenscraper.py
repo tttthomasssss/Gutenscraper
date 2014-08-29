@@ -3,33 +3,26 @@ import sys
 from bs4 import BeautifulSoup
 import requests
 
-def _scrape_plain_text_content(base_url, book_rel_url, headers):
+def _scrape_html_book_content(base_url, book_rel_url, headers):
 	# book_rel_url is of the form '/ebooks/12701'
-	# plain text urls look like 'http://www.gutenberg.org/cache/epub/12701/pg12701.txt'
+	# html urls of the books look like 'http://www.gutenberg.org/files/12701/12701-h/12701-h.htm'
 	book_id = book_rel_url.split('/')[-1]
-	plain_text_url = '{}/cache/epub/{}/pg{}.txt'.format(base_url, book_id, book_id)
+	html_url = '{}/files/{}/{}-h/{}-h.htm'.format(base_url, book_id, book_id, book_id)
 
 	r = requests.get(plain_text_url, headers=headers)
+	soup = BeautifulSoup(r.content)
 
-	#ff = open('/Users/thomas/DevSandbox/InfiniteSandbox/gutenscraper/pg12701.txt', 'r')
-
-	# The actual book content contains lots of rubbish like license information and other stuff
-	# Start of the book is usually marked with '***START OF THE PROJECT GUTENBERG EBOOK <BOOK TITLE>***'
-	# The end of the book is makred with '***END OF THE PROJECT GUTENBERG EBOOK <BOOK TITLE>***'
-	book_content = r.content
-	#book_content = ff.read()
+	# For testing use some local files to avoid being blocked (too lazy for header spoofing...)
+	#ff = open('/Users/thomas/DevSandbox/InfiniteSandbox/gutenscraper/verwandlung.html', 'r')
+	#soup = BeautifulSoup(ff.read())
 	#ff.close()
 
-	book_prefix_primary = '***START OF THE PROJECT'
-	book_prefix_secondary = '***'
-	book_suffix = '***END OF THE PROJECT'
+	# TODO:	Still leaves a few tags and some other stuff in the content, but good enough for now
+	# 		Or in other words "Ain't no Tom Penny, but [it] will do!"
+	paragraphs = soup.findAll('p')
+	content = map(lambda tag: tag.contents[0], paragraphs)
 
-	start = book_content.find(book_prefix_primary)
-	book_content = book_content[start + len(book_prefix_primary):]
-	start = book_content.find(book_prefix_secondary)
-	end = book_content.rfind(book_suffix)
-
-	return book_content[start + len(book_prefix_secondary):end].strip()
+	return content
 
 def search_books(search_term, base_url='http://www.gutenberg.org', headers=None):
 	params = {'query': search_term}
@@ -37,10 +30,12 @@ def search_books(search_term, base_url='http://www.gutenberg.org', headers=None)
 	req_url = '{}{}'.format(base_url, '/ebooks/search/')
 
 	r = requests.get(req_url, params=params, headers=headers);
-
 	soup = BeautifulSoup(r.content)
-	#f = open('/Users/thomas/DevSandbox/InfiniteSandbox/gutenscraper/dump.html', 'r')
+
+	# Local Dev, Local Files
+	#f = open('/Users/thomas/DevSandbox/InfiniteSandbox/gutenscraper/search_result.html', 'r')
 	#soup = BeautifulSoup(f.read())
+	#f.close()
 
 	search_results = soup.findAll('li', {'class': 'booklink'})
 
@@ -50,7 +45,7 @@ def search_books(search_term, base_url='http://www.gutenberg.org', headers=None)
 		book = dict()
 
 		book['url'] = '{}{}'.format(base_url, result.a['href'])
-		book['content'] = _scrape_plain_text_content(base_url, result.a['href'], headers)
+		book['content'] = _scrape_html_book_content(base_url, result.a['href'], headers)
 
 		temp_result = result.findAll('span', {'class': 'title'})
 		book['title'] = temp_result[0].contents[0]
