@@ -58,14 +58,7 @@ def search_books(search_term, base_url='http://www.gutenberg.org', headers=None)
 		temp_result = result.findAll('span', {'class': 'subtitle'})
 		book['author'] = temp_result[0].contents[0]
 
-		print 'TITLE:', book['title']
-
 		books.append(book)
-
-
-	for book in books:
-		print 'AUTHOR=%s, TITLE=%s' % (book['author'], book['title'])
-		print 'CONTENT:', book['content'][:100]
 
 	return books
 
